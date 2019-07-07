@@ -10,14 +10,8 @@ mod tests {
         let route2 = router::new_route("/abc/*/:cde");
         let route2_request = router::new_route("/abc/this_is_ingnored_by_wildcard/this_is_a_param");
 
-        println!("########################################");
-        println!("########################################");
-        println!("########################################");
         r.add_route(&route, 10);
-        println!("########################################");
         r.add_route(&route2, 20);
-        println!("########################################");
-        println!("########################################");
 
         let (x, params) = r.route(&route2_request).unwrap();
         assert!(*x == 20);

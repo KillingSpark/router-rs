@@ -19,6 +19,7 @@ pub fn new_route(p: &str) -> Route {
         panic!("Illegal path");
     }
     if p.ends_with("/") {
+        //maybe just trim? Not sure
         panic!("Illegal path");
     }
     Route {
@@ -105,8 +106,6 @@ fn add_route<T>(tree: &mut Tree<T>, route: &Route, level: usize, item: T) {
         }
         children.push(Tree::Leaf(item));
     } else {
-        println!("{}", route.path[level]);
-
         let idx = find_matching_child(children, route, level);
 
         match idx {
