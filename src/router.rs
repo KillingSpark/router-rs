@@ -6,11 +6,31 @@ pub enum Tree<T> {
 }
 
 pub struct Route<'r> {
-    pub path: Vec<&'r str>,
+    path: Vec<&'r str>,
+}
+
+#[allow(dead_code)]
+pub fn new_route(p: &str) -> Route {
+    if p.len() < 1 {
+        panic!("Illegal path");
+    }
+    if !p.starts_with("/") {
+        panic!("Illegal path");
+    }
+    Route {
+        path: p.split("/").collect(),
+    }
 }
 
 pub struct Router<T> {
     pub tree: Tree<T>,
+}
+
+#[allow(dead_code)]
+pub fn new_router<T>() -> Router<T> {
+    Router {
+        tree: Tree::Wildcard(Vec::new()),
+    }
 }
 
 fn find_matching_child<T>(
