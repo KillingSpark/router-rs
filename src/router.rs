@@ -209,14 +209,11 @@ fn find_route<'a, T>(
     if level == route.path.len() {
         match tree {
             Tree::Leaf(item) => return Some(item),
-            _ => panic!("No leaf on this route's end"),
+            _ => return None, //this path would is longer than the wanted route
         }
     } else {
         match tree {
-            Tree::Leaf(_) => {
-                //TODO error types
-                panic!("Tried to get children of a leaf");
-            }
+            Tree::Leaf(_) => return None, //this path is shorter than the wanted route
             Tree::Specific(name, children) => {
                 if name.as_str() == route.path[level] {
                     for c in children {
@@ -272,6 +269,7 @@ impl<T> Router<T> {
                     }
                 }
             }
+            //buggy -> panic
             _ => panic!("Corrupt root"),
         };
 
