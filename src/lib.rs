@@ -14,8 +14,8 @@ mod tests {
             router::new_route("/abcd/this_is_ingnored_by_wildcard/this_is_a_param").unwrap();
 
         let route_not_added_request = router::new_route("/this/does/not/exist").unwrap();
-        let route_longer_request = router::new_route("/this/does/not/exist").unwrap();
-        let route_shorter_request = router::new_route("/this/does/not/exist").unwrap();
+        let route_longer_request = router::new_route("/abcd/wild/param/too/long/path").unwrap();
+        let route_shorter_request = router::new_route("/abcd/wild").unwrap();
 
         r.add_route(&route, 20).unwrap();
 
