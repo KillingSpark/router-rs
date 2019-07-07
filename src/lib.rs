@@ -13,6 +13,10 @@ mod tests {
         let route2_request =
             router::new_route("/abcd/this_is_ingnored_by_wildcard/this_is_a_param").unwrap();
 
+        let route_not_added_request = router::new_route("/this/does/not/exist").unwrap();
+        let route_longer_request = router::new_route("/this/does/not/exist").unwrap();
+        let route_shorter_request = router::new_route("/this/does/not/exist").unwrap();
+
         r.add_route(&route, 20).unwrap();
 
         let (x, params) = r.route(&route_request).unwrap();
@@ -21,6 +25,13 @@ mod tests {
             params.get(&":cde".to_owned()),
             Some(&"this_is_a_param".to_owned())
         );
+
+        let x = r.route(&route_not_added_request);
+        assert_eq!(x, None);
+        let x = r.route(&route_longer_request);
+        assert_eq!(x, None);
+        let x = r.route(&route_shorter_request);
+        assert_eq!(x, None);
 
         struct Beep {
             a: u32,
