@@ -11,10 +11,14 @@ pub struct Route<'r> {
 
 #[allow(dead_code)]
 pub fn new_route(p: &str) -> Route {
+    //TODO error type
     if p.len() < 1 {
         panic!("Illegal path");
     }
     if !p.starts_with("/") {
+        panic!("Illegal path");
+    }
+    if p.ends_with("/") {
         panic!("Illegal path");
     }
     Route {
