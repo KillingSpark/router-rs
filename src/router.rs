@@ -6,7 +6,7 @@ pub enum Tree<T> {
 }
 
 pub struct Route<'r> {
-    pub Path: Vec<&'r str>,
+    pub path: Vec<&'r str>,
 }
 
 pub struct Router<T> {
@@ -30,7 +30,7 @@ fn find_matching_child<T>(
                 panic!("Tried to add as a neighbor to a leaf");
             }
             Tree::Wildcard(_) => {
-                if route.Path[level] != "*" {
+                if route.path[level] != "*" {
                     //TODO error types
                     panic!("Tried to add are more specific route as a neighbor to a wildcard");
                 } else {
@@ -39,13 +39,13 @@ fn find_matching_child<T>(
                 }
             }
             Tree::Specific(name, _) => {
-                if route.Path[level] == name.as_str() {
+                if route.path[level] == name.as_str() {
                     child_to_add_to = Some(idx);
                     counter += 1;
                 }
             }
             Tree::Parameter(name, _) => {
-                if route.Path[level] == name.as_str() {
+                if route.path[level] == name.as_str() {
                     child_to_add_to = Some(idx);
                     counter += 1;
                 } else {
@@ -75,13 +75,13 @@ fn add_route<T>(tree: &mut Tree<T>, route: &Route, level: usize, item: T) {
         Tree::Wildcard(children) => (children),
     };
 
-    if level == route.Path.len() {
+    if level == route.path.len() {
         if children.len() > 0 {
             panic!("Tried to add leave on path that already has lower leaves");
         }
         children.push(Tree::Leaf(item));
     } else {
-        println!("{}", route.Path[level]);
+        println!("{}", route.path[level]);
 
         let idx = find_matching_child(children, route, level);
 
@@ -91,7 +91,7 @@ fn add_route<T>(tree: &mut Tree<T>, route: &Route, level: usize, item: T) {
             }
             None => {
                 //need to add new child depending on the part of the route
-                let name: &str = route.Path[level];
+                let name: &str = route.path[level];
                 if name == "*" {
                     if children.len() > 0 {
                         panic!("Tried to add wildcard on path that already has lower leaves");
@@ -120,7 +120,7 @@ fn find_route<'a, T>(
     level: usize,
     params: &mut HashMap<String, String>,
 ) -> Option<&'a mut T> {
-    if level == route.Path.len() {
+    if level == route.path.len() {
         match tree {
             Tree::Leaf(item) => return Some(item),
             _ => panic!("No leaf on this route's end"),
@@ -132,7 +132,7 @@ fn find_route<'a, T>(
                 panic!("Tried to get children of a leaf");
             }
             Tree::Specific(name, children) => {
-                if name.as_str() == route.Path[level] {
+                if name.as_str() == route.path[level] {
                     for c in children {
                         match find_route(c, route, level + 1, params) {
                             Some(r) => return Some(r),
@@ -145,7 +145,7 @@ fn find_route<'a, T>(
                 for c in children {
                     match find_route(c, route, level + 1, params) {
                         Some(r) => {
-                            params.insert(name.to_owned(), route.Path[level].to_owned());
+                            params.insert(name.to_owned(), route.path[level].to_owned());
                             return Some(r);
                         }
                         None => {}
@@ -167,10 +167,12 @@ fn find_route<'a, T>(
 }
 
 impl<T> Router<T> {
+    #[allow(dead_code)]
     pub fn add_route(&mut self, route: &Route, item: T) {
         add_route(&mut self.tree, route, 0, item);
     }
 
+    #[allow(dead_code)]
     pub fn route<'a>(&'a mut self, route: &Route) -> Option<(&'a mut T, HashMap<String, String>)> {
         match &mut self.tree {
             Tree::Wildcard(root_children) => {

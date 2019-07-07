@@ -9,14 +9,14 @@ mod tests {
             tree: router::Tree::Wildcard(Vec::new()),
         };
         let route = router::Route {
-            Path: vec!["ab", "cd"],
+            path: vec!["ab", "cd"],
         };
         let route2 = router::Route {
-            Path: vec!["abc", "*", ":cde"],
+            path: vec!["abc", "*", ":cde"],
         };
 
         let route2_request = router::Route {
-            Path: vec!["abc", "this_is_ingnored_by_wildcard", "this_is_a_param"],
+            path: vec!["abc", "this_is_ingnored_by_wildcard", "this_is_a_param"],
         };
 
         println!("########################################");
@@ -26,26 +26,28 @@ mod tests {
         println!("########################################");
         r.add_route(&route2, 20);
         println!("########################################");
-        let (x, params) = r.route(&route2_request).unwrap();
-        println!("Routed to: {}", x);
-        println!(
-            "Parameter found : {}",
-            params.get(&":cde".to_owned()).unwrap()
-        );
-        println!("########################################");
         println!("########################################");
 
-        struct beep {
-            A: u32,
+        let (x, params) = r.route(&route2_request).unwrap();
+        assert!(*x == 20);
+        assert_eq!(
+            params.get(&":cde".to_owned()),
+            Some(&"this_is_a_param".to_owned())
+        );
+
+        struct Beep {
+            a: u32,
         };
 
-        let mut r: router::Router<&mut beep> = router::Router {
+        let mut r: router::Router<&mut Beep> = router::Router {
             tree: router::Tree::Wildcard(Vec::new()),
         };
-        let mut b = beep { A: 10 };
+        let mut b = Beep { a: 10 };
         r.add_route(&route, &mut b);
         let (x, _) = r.route(&route).unwrap();
-        x.A = 100;
-        println!("{}, should be 100", b.A);
+
+        assert!(x.a == 10);
+        x.a = 100;
+        assert!(b.a == 100);
     }
 }
