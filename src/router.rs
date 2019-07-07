@@ -10,21 +10,21 @@ pub struct Route<'r> {
 }
 
 #[allow(dead_code)]
-pub fn new_route(p: &str) -> Route {
+pub fn new_route(p: &str) -> Result<Route, MalformedRouteError> {
     //TODO error type
     if p.len() < 1 {
-        panic!("Illegal path");
+        return Err(MalformedRouteError(p.to_owned()));
     }
     if !p.starts_with("/") {
-        panic!("Illegal path");
+        return Err(MalformedRouteError(p.to_owned()));
     }
     if p.ends_with("/") {
         //maybe just trim? Not sure
-        panic!("Illegal path");
+        return Err(MalformedRouteError(p.to_owned()));
     }
-    Route {
+    Ok(Route {
         path: p.split("/").collect(),
-    }
+    })
 }
 
 pub struct Router<T> {
@@ -38,11 +38,63 @@ pub fn new_router<T>() -> Router<T> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum RouteError {
+    AddToLeafLevel,
+    MismatchTypes(String, String),
+    MismatchParameter(String, String),
+}
+
+#[derive(Debug, Clone)]
+pub struct MalformedRouteError(String);
+
+use std::fmt;
+impl fmt::Display for MalformedRouteError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "This route is malformed: {}", self.0)
+    }
+}
+
+impl std::error::Error for MalformedRouteError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        // Generic error, underlying cause isn't tracked.
+        None
+    }
+}
+
+impl fmt::Display for RouteError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            RouteError::AddToLeafLevel => write!(
+                f,
+                "tried to add a path so that a leaf would be on another longer path"
+            ),
+            RouteError::MismatchTypes(t1, t2) => write!(
+                f,
+                "tried to add path so that two different types of parts collide: {} and {}",
+                t1, t2
+            ),
+            RouteError::MismatchParameter(t1, t2) => write!(
+                f,
+                "tried to add path so that a paramter and another part collide: {} and {}",
+                t1, t2
+            ),
+        }
+    }
+}
+
+impl std::error::Error for RouteError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        // Generic error, underlying cause isn't tracked.
+        None
+    }
+}
+
 fn find_matching_child<T>(
     children: &mut Vec<Tree<T>>,
     route: &Route,
     level: usize,
-) -> Option<usize> {
+) -> Result<Option<usize>, RouteError> {
     let mut child_to_add_to: Option<usize> = None;
 
     let mut counter = 0;
@@ -51,13 +103,14 @@ fn find_matching_child<T>(
     for c in children {
         match c {
             Tree::Leaf(_) => {
-                //TODO error types
-                panic!("Tried to add as a neighbor to a leaf");
+                return Err(RouteError::AddToLeafLevel);
             }
             Tree::Wildcard(_) => {
                 if route.path[level] != "*" {
-                    //TODO error types
-                    panic!("Tried to add are more specific route as a neighbor to a wildcard");
+                    return Err(RouteError::MismatchTypes(
+                        "Wildcard".to_owned(),
+                        "Specific".to_owned(),
+                    ));
                 } else {
                     child_to_add_to = Some(idx);
                     counter += 1;
@@ -74,8 +127,10 @@ fn find_matching_child<T>(
                     child_to_add_to = Some(idx);
                     counter += 1;
                 } else {
-                    //TODO error types
-                    panic!("Tried to add something other than the same variable on the path");
+                    return Err(RouteError::MismatchParameter(
+                        name.clone(),
+                        route.path[level].to_owned(),
+                    ));
                 }
             }
         }
@@ -86,14 +141,18 @@ fn find_matching_child<T>(
         panic!("Bug detected");
     }
 
-    child_to_add_to
+    Ok(child_to_add_to)
 }
 
-fn add_route<T>(tree: &mut Tree<T>, route: &Route, level: usize, item: T) {
+fn add_route<T>(
+    tree: &mut Tree<T>,
+    route: &Route,
+    level: usize,
+    item: T,
+) -> Result<(), RouteError> {
     let children = match tree {
         Tree::Leaf(_) => {
-            //TODO error types
-            panic!("Tried to add to leaf");
+            return Err(RouteError::AddToLeafLevel);
         }
         Tree::Specific(_, children) => (children),
         Tree::Parameter(_, children) => (children),
@@ -102,35 +161,39 @@ fn add_route<T>(tree: &mut Tree<T>, route: &Route, level: usize, item: T) {
 
     if level == route.path.len() {
         if children.len() > 0 {
-            panic!("Tried to add leave on path that already has lower leaves");
+            return Err(RouteError::AddToLeafLevel);
         }
         children.push(Tree::Leaf(item));
+        Ok(())
     } else {
-        let idx = find_matching_child(children, route, level);
-
-        match idx {
-            Some(idx) => {
-                add_route(&mut children[idx], route, level + 1, item);
-            }
-            None => {
-                //need to add new child depending on the part of the route
-                let name: &str = route.path[level];
-                if name == "*" {
-                    if children.len() > 0 {
-                        panic!("Tried to add wildcard on path that already has lower leaves");
+        match find_matching_child(children, route, level) {
+            Err(e) => return Err(e),
+            Ok(idx) => {
+                match idx {
+                    Some(idx) => {
+                        return add_route(&mut children[idx], route, level + 1, item);
                     }
-                    children.push(Tree::Wildcard(Vec::new()));
-                } else {
-                    if name.starts_with(":") {
-                        if children.len() > 0 {
-                            panic!("Tried to add parameter on path that already has lower leaves");
+                    None => {
+                        //need to add new child depending on the part of the route
+                        let name: &str = route.path[level];
+                        if name == "*" {
+                            if children.len() > 0 {
+                                return Err(RouteError::MismatchTypes("Specific/Parameter".to_owned(), "Wildcard".to_owned()));
+                            }
+                            children.push(Tree::Wildcard(Vec::new()));
+                        } else {
+                            if name.starts_with(":") {
+                                if children.len() > 0 {
+                                    return Err(RouteError::MismatchParameter(name.to_owned(), "other".to_owned()));
+                                }
+                                children.push(Tree::Parameter(name.to_owned(), Vec::new()));
+                            } else {
+                                children.push(Tree::Specific(name.to_owned(), Vec::new()));
+                            }
                         }
-                        children.push(Tree::Parameter(name.to_owned(), Vec::new()));
-                    } else {
-                        children.push(Tree::Specific(name.to_owned(), Vec::new()));
+                        return add_route(children.last_mut().unwrap(), route, level + 1, item);
                     }
                 }
-                add_route(children.last_mut().unwrap(), route, level + 1, item);
             }
         }
     }
@@ -191,8 +254,8 @@ fn find_route<'a, T>(
 
 impl<T> Router<T> {
     #[allow(dead_code)]
-    pub fn add_route(&mut self, route: &Route, item: T) {
-        add_route(&mut self.tree, route, 0, item);
+    pub fn add_route(&mut self, route: &Route, item: T) -> Result<(), RouteError>{
+        add_route(&mut self.tree, route, 0, item)
     }
 
     #[allow(dead_code)]
