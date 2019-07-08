@@ -45,9 +45,7 @@ fn test_routing() {
         a: u32,
     };
 
-    let mut r: router::Router<&mut Beep> = router::Router {
-        tree: router::Tree::Wildcard(Vec::new()),
-    };
+    let mut r = router::new_router();
     let mut b1 = Beep { a: 10 };
     let mut b2 = Beep { a: 20 };
 
