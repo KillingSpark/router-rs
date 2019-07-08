@@ -5,7 +5,7 @@ pub enum Tree<T> {
     Wildcard(Vec<Tree<T>>),
     Specific(String, Vec<Tree<T>>),
     Parameter(String, Vec<Tree<T>>),
-    Leaf(T),
+    Leaf(T, bool),
 }
 
 pub struct Router<T> {
@@ -25,8 +25,6 @@ pub enum AddRouteError {
     MismatchTypes(String, String),
     MismatchParameter(String, String),
 }
-
-
 
 impl fmt::Display for AddRouteError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -68,7 +66,7 @@ fn find_matching_child<T>(
     let mut idx = 0;
     for c in children {
         match c {
-            Tree::Leaf(_) => {
+            Tree::Leaf(_, _) => {
                 return Err(AddRouteError::AddToLeafLevel);
             }
             Tree::Wildcard(_) => {
@@ -117,7 +115,7 @@ fn add_route<T>(
     item: T,
 ) -> Result<(), AddRouteError> {
     let children = match tree {
-        Tree::Leaf(_) => {
+        Tree::Leaf(_, _) => {
             return Err(AddRouteError::AddToLeafLevel);
         }
         Tree::Specific(_, children) => (children),
@@ -129,7 +127,8 @@ fn add_route<T>(
         if children.len() > 0 {
             return Err(AddRouteError::AddToLeafLevel);
         }
-        children.push(Tree::Leaf(item));
+        let chatch_all = route.path[level - 1] == "*";
+        children.push(Tree::Leaf(item, chatch_all));
         Ok(())
     } else {
         match find_matching_child(children, route, level) {
@@ -144,13 +143,19 @@ fn add_route<T>(
                         let name: &str = route.path[level];
                         if name == "*" {
                             if children.len() > 0 {
-                                return Err(AddRouteError::MismatchTypes("Specific/Parameter".to_owned(), "Wildcard".to_owned()));
+                                return Err(AddRouteError::MismatchTypes(
+                                    "Specific/Parameter".to_owned(),
+                                    "Wildcard".to_owned(),
+                                ));
                             }
                             children.push(Tree::Wildcard(Vec::new()));
                         } else {
                             if name.starts_with(":") {
                                 if children.len() > 0 {
-                                    return Err(AddRouteError::MismatchParameter(name.to_owned(), "other".to_owned()));
+                                    return Err(AddRouteError::MismatchParameter(
+                                        name.to_owned(),
+                                        "other".to_owned(),
+                                    ));
                                 }
                                 children.push(Tree::Parameter(name.to_owned(), Vec::new()));
                             } else {
@@ -174,12 +179,12 @@ fn find_route<'a, T>(
 ) -> Option<&'a mut T> {
     if level == route.path.len() {
         match tree {
-            Tree::Leaf(item) => return Some(item),
-            _ => return None, //this path would is longer than the wanted route
+            Tree::Leaf(item, _) => return Some(item),
+            _ => return None, //this path is longer than the wanted route
         }
     } else {
         match tree {
-            Tree::Leaf(_) => return None, //this path is shorter than the wanted route
+            Tree::Leaf(item, catch_all) => return if *catch_all { Some(item) } else { None }, //this path is shorter than the wanted route
             Tree::Specific(name, children) => {
                 if name.as_str() == route.path[level] {
                     for c in children {
@@ -217,7 +222,7 @@ fn find_route<'a, T>(
 
 impl<T> Router<T> {
     #[allow(dead_code)]
-    pub fn add_route(&mut self, route: &Route, item: T) -> Result<(), AddRouteError>{
+    pub fn add_route(&mut self, route: &Route, item: T) -> Result<(), AddRouteError> {
         add_route(&mut self.tree, route, 0, item)
     }
 

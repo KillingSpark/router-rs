@@ -14,13 +14,24 @@ fn test_routing() {
     let route_longer_request = route::new_route("/abcd/wild/param/too/long/path").unwrap();
     let route_shorter_request = route::new_route("/abcd/wild").unwrap();
 
+    let route_with_ending_wildcard = route::new_route("/fgh/:param/*").unwrap();
+    let route_with_ending_wildcard_request = route::new_route("/fgh/set_param/this/is/aLonger/path").unwrap();
+
     r.add_route(&route, 20).unwrap();
+    r.add_route(&route_with_ending_wildcard, 10).unwrap();
 
     let (x, params) = r.route(&route_request).unwrap();
     assert!(*x == 20);
     assert_eq!(
         params.get(&":cde".to_owned()),
         Some(&"this_is_a_param".to_owned())
+    );
+
+    let (x, params) = r.route(&route_with_ending_wildcard_request).unwrap();
+    assert!(*x == 10);
+    assert_eq!(
+        params.get(&":param".to_owned()),
+        Some(&"set_param".to_owned())
     );
 
     let x = r.route(&route_not_added_request);
