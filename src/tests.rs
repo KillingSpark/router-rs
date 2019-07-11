@@ -41,6 +41,32 @@ fn test_routing() {
     let x = r.route(&route_shorter_request);
     assert_eq!(x, None);
 
+    let route_longer = route::new_route("/one/:param1/:param2").unwrap();
+    let route_longer_req = route::new_route("/one/set1/set2").unwrap();
+    let route_shorter = route::new_route("/one/:param1").unwrap();
+    let route_shorter_req = route::new_route("/one/set1short").unwrap();
+
+    r.add_route(&route_longer, 123).unwrap();
+    r.add_route(&route_shorter, 456).unwrap();
+
+    let (x,p) = r.route(&route_longer_req).unwrap();
+    assert!(*x == 123);
+    assert_eq!(
+        p.get(&":param1".to_owned()),
+        Some(&"set1".to_owned())
+    );
+    assert_eq!(
+        p.get(&":param2".to_owned()),
+        Some(&"set2".to_owned())
+    );
+    let (x,p) = r.route(&route_shorter_req).unwrap();
+    assert!(*x == 456);
+    assert_eq!(
+        p.get(&":param1".to_owned()),
+        Some(&"set1short".to_owned())
+    );
+
+
     struct Beep {
         a: u32,
     };
@@ -78,20 +104,8 @@ fn test_route_collisions() {
         Err(_) => false,
     });
     assert!(match r.add_route(&route2, 0) {
-        Ok(()) => false,
-        Err(_) => true,
-    });
-
-    let mut r = router::new_router();
-    let route1 = route::new_route("/a/b/c/d").unwrap();
-    let route2 = route::new_route("/a/b/c").unwrap();
-    assert!(match r.add_route(&route1, 0) {
         Ok(()) => true,
         Err(_) => false,
-    });
-    assert!(match r.add_route(&route2, 0) {
-        Ok(()) => false,
-        Err(_) => true,
     });
 
     //same path mixed wildcard and specific

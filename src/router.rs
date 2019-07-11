@@ -67,7 +67,7 @@ fn find_matching_child<T>(
     for c in children {
         match c {
             Tree::Leaf(_, _) => {
-                return Err(AddRouteError::AddToLeafLevel);
+                continue;
             }
             Tree::Wildcard(_) => {
                 if route.path[level] != "*" {
@@ -124,8 +124,13 @@ fn add_route<T>(
     };
 
     if level == route.path.len() {
-        if children.len() > 0 {
-            return Err(AddRouteError::AddToLeafLevel);
+        for c in &*children {
+            match c {
+                Tree::Leaf(_, _) => {
+                    panic!("Route exists already {:?}", route.path);
+                },
+                _ => {continue}
+            }
         }
         let chatch_all = route.path[level - 1] == "*";
         children.push(Tree::Leaf(item, chatch_all));
