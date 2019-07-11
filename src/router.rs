@@ -21,7 +21,6 @@ pub fn new_router<T>() -> Router<T> {
 
 #[derive(Debug, Clone)]
 pub enum AddRouteError {
-    AddToLeafLevel,
     MismatchTypes(String, String),
     MismatchParameter(String, String),
 }
@@ -29,10 +28,6 @@ pub enum AddRouteError {
 impl fmt::Display for AddRouteError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            AddRouteError::AddToLeafLevel => write!(
-                f,
-                "tried to add a path so that a leaf would be on another longer path"
-            ),
             AddRouteError::MismatchTypes(t1, t2) => write!(
                 f,
                 "tried to add path so that two different types of parts collide: {} and {}",
@@ -67,6 +62,7 @@ fn find_matching_child<T>(
     for c in children {
         match c {
             Tree::Leaf(_, _) => {
+                idx+=1;
                 continue;
             }
             Tree::Wildcard(_) => {
@@ -116,7 +112,7 @@ fn add_route<T>(
 ) -> Result<(), AddRouteError> {
     let children = match tree {
         Tree::Leaf(_, _) => {
-            return Err(AddRouteError::AddToLeafLevel);
+            panic!("Tried to add leaf to a leaf: {:?}", route.path);
         }
         Tree::Specific(_, children) => (children),
         Tree::Parameter(_, children) => (children),
@@ -128,8 +124,8 @@ fn add_route<T>(
             match c {
                 Tree::Leaf(_, _) => {
                     panic!("Route exists already {:?}", route.path);
-                },
-                _ => {continue}
+                }
+                _ => continue,
             }
         }
         let chatch_all = route.path[level - 1] == "*";
@@ -157,10 +153,32 @@ fn add_route<T>(
                         } else {
                             if name.starts_with(":") {
                                 if children.len() > 0 {
-                                    return Err(AddRouteError::MismatchParameter(
-                                        name.to_owned(),
-                                        "other".to_owned(),
-                                    ));
+                                    for c in &*children {
+                                        match c {
+                                            Tree::Leaf(_, _) => continue,
+                                            _ => {
+                                                return Err(AddRouteError::MismatchParameter(
+                                                    name.to_owned(),
+                                                    format!(
+                                                        "other: \"{}\"",
+                                                        match c {
+                                                            Tree::Leaf(_, _) => "Leaf".to_owned(),
+                                                            Tree::Wildcard(_) => {
+                                                                "Wildcard".to_owned()
+                                                            }
+                                                            Tree::Parameter(name, _) => {
+                                                                format!("Param: {}", name)
+                                                                    .to_owned()
+                                                            }
+                                                            Tree::Specific(name, _) => {
+                                                                format!("Specific: {}", name)
+                                                            }
+                                                        }
+                                                    ),
+                                                ));
+                                            }
+                                        }
+                                    }
                                 }
                                 children.push(Tree::Parameter(name.to_owned(), Vec::new()));
                             } else {
