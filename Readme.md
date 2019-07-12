@@ -1,8 +1,20 @@
 # Router
-This is a generic router for objects in a organized path tree. Think of routers in http-servers that match urls to handlers.
+This is a generic router for objects in an organized path tree. Think of routers in http-servers that match urls to handlers.
 
 ## How does it work
-See tests for some more examplesbut the Api is actually this small.
+See tests for some more examples, but the Api is actually this small.
+
+For a more involved example see examples/main. The complexity is from mutability and using refcells to achieve mutating the router in the handlers
+not in the usage of the router itself though.
+
+Note that you can use this also as a generic matching engine if you dont want to use the handler approach but just want to get parameters from a route with a router like this: 
+```
+let mut r = router::new_router();
+r.add_route(route::new_route("/:param1/:param2/*").unwrap(), ());
+
+//params now contains mapping for ":param1" => "first" and ":param2" => "second"
+let (_, params) = r.route(route::new_route("/first/second/this/is/ignored").unwrap()).unwrap();
+```
 
 ```
 struct Beep {
