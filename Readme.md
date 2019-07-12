@@ -16,6 +16,8 @@ r.add_route(route::new_route("/:param1/:param2/*").unwrap(), ());
 let (_, params) = r.route(route::new_route("/first/second/this/is/ignored").unwrap()).unwrap();
 ```
 
+Simple example
+
 ```
 struct Beep {
     a: u32,
