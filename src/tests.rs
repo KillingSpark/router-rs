@@ -1,5 +1,5 @@
-use crate::router;
 use crate::route;
+use crate::router;
 #[test]
 fn test_routing() {
     let mut r: router::Router<u32> = router::new_router();
@@ -15,7 +15,8 @@ fn test_routing() {
     let route_shorter_request = route::new_route("/abcd/wild").unwrap();
 
     let route_with_ending_wildcard = route::new_route("/fgh/:param/*").unwrap();
-    let route_with_ending_wildcard_request = route::new_route("/fgh/set_param/this/is/aLonger/path").unwrap();
+    let route_with_ending_wildcard_request =
+        route::new_route("/fgh/set_param/this/is/aLonger/path").unwrap();
 
     r.add_route(&route, 20).unwrap();
     r.add_route(&route_with_ending_wildcard, 10).unwrap();
@@ -49,23 +50,13 @@ fn test_routing() {
     r.add_route(&route_longer, 123).unwrap();
     r.add_route(&route_shorter, 456).unwrap();
 
-    let (x,p) = r.route(&route_longer_req).unwrap();
+    let (x, p) = r.route(&route_longer_req).unwrap();
     assert!(*x == 123);
-    assert_eq!(
-        p.get(&":param1".to_owned()),
-        Some(&"set1".to_owned())
-    );
-    assert_eq!(
-        p.get(&":param2".to_owned()),
-        Some(&"set2".to_owned())
-    );
-    let (x,p) = r.route(&route_shorter_req).unwrap();
+    assert_eq!(p.get(&":param1".to_owned()), Some(&"set1".to_owned()));
+    assert_eq!(p.get(&":param2".to_owned()), Some(&"set2".to_owned()));
+    let (x, p) = r.route(&route_shorter_req).unwrap();
     assert!(*x == 456);
-    assert_eq!(
-        p.get(&":param1".to_owned()),
-        Some(&"set1short".to_owned())
-    );
-
+    assert_eq!(p.get(&":param1".to_owned()), Some(&"set1short".to_owned()));
 
     struct Beep {
         a: u32,
@@ -88,14 +79,7 @@ fn test_routing() {
 
     assert!(b2.a == 200);
     assert!(b1.a == 100);
-}
 
-#[test]
-fn test_route_collisions() {
-    //this checks combinations of collisions that may happen when adding routes.
-    //all of these need to error else there is a bug somewhere
-
-    //same path different length
     let mut r = router::new_router();
     let route1 = route::new_route("/a/b/c").unwrap();
     let route2 = route::new_route("/a/b/c/d").unwrap();
@@ -106,6 +90,25 @@ fn test_route_collisions() {
     assert!(match r.add_route(&route2, 0) {
         Ok(()) => true,
         Err(_) => false,
+    });
+}
+
+#[test]
+fn test_route_collisions() {
+    //this checks combinations of collisions that may happen when adding routes.
+    //all of these need to error else there is a bug somewhere
+
+    //same path twice
+    let mut r = router::new_router();
+    let route1 = route::new_route("/a/b/c").unwrap();
+    let route2 = route::new_route("/a/b/c").unwrap();
+    assert!(match r.add_route(&route1, 0) {
+        Ok(()) => true,
+        Err(_) => false,
+    });
+    assert!(match r.add_route(&route2, 0) {
+        Ok(()) => false,
+        Err(_) => true,
     });
 
     //same path mixed wildcard and specific

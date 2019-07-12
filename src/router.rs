@@ -23,11 +23,17 @@ pub fn new_router<T>() -> Router<T> {
 pub enum AddRouteError {
     MismatchTypes(String, String),
     MismatchParameter(String, String),
+    RouteExists(String),
 }
 
 impl fmt::Display for AddRouteError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            AddRouteError::RouteExists(t1) => write!(
+                f,
+                "This route has already been added: {}",
+                t1,
+            ),
             AddRouteError::MismatchTypes(t1, t2) => write!(
                 f,
                 "tried to add path so that two different types of parts collide: {} and {}",
@@ -112,6 +118,7 @@ fn add_route<T>(
 ) -> Result<(), AddRouteError> {
     let children = match tree {
         Tree::Leaf(_, _) => {
+            //bug -> panic
             panic!("Tried to add leaf to a leaf: {:?}", route.path);
         }
         Tree::Specific(_, children) => (children),
@@ -123,7 +130,7 @@ fn add_route<T>(
         for c in &*children {
             match c {
                 Tree::Leaf(_, _) => {
-                    panic!("Route exists already {:?}", route.path);
+                    return Err(AddRouteError::RouteExists(route.path.join("/").to_owned()));
                 }
                 _ => continue,
             }
